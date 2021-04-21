@@ -160,7 +160,7 @@ public class ControllerCitizen implements IController {
       citizenZip.registerOutParameter(1, Types.VARCHAR);
       citizenZip.setString(2, username);
       citizenZip.execute();
-      citizen = new Citizen(citizenSSN.getString(1), citizenZip.getInt(1), conn);
+      citizen = new Citizen(username, citizenSSN.getString(1), citizenZip.getInt(1), conn);
     } catch (SQLException e) {
       System.out.println("ERROR: Could not create a citizen object for this user.");
     }

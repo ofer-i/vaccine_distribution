@@ -2,8 +2,8 @@ import java.sql.Connection;
 
 public class GovOfficial extends AUser{
 
-  GovOfficial(Connection conn) {
-    super(conn);
+  GovOfficial(String username, Connection conn) {
+    super(username, conn);
   }
 
   public void viewVaccineSupply(){

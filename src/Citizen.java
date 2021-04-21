@@ -13,8 +13,8 @@ public final class Citizen extends AUser {
   private Integer clinic;
   int zipCode;
 
-  Citizen(String ssn, int zipCode, Connection conn) throws SQLException {
-    super(conn);
+  Citizen(String username, String ssn, int zipCode, Connection conn) throws SQLException {
+    super(username, conn);
     availableAppointments = new ArrayList<>();
     this.ssn = ssn;
   }

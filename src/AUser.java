@@ -8,8 +8,10 @@ import java.sql.Types;
 public abstract class  AUser implements IUser {
   protected Connection connect;
   private boolean loggedIn;
+  protected String username;
 
-  AUser(Connection conn) {
+  AUser(String username, Connection conn) {
+    this.username = username;
     this.connect = conn;
     loggedIn = false;
   }
