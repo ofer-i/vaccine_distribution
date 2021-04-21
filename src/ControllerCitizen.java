@@ -15,6 +15,7 @@ import java.util.Scanner;
 public class ControllerCitizen implements IController {
 
   private Citizen citizen;
+
   ControllerCitizen() {
 
   }
@@ -178,11 +179,65 @@ public class ControllerCitizen implements IController {
       System.out.println("ERROR: Could not retrieve this user's clinic.");
     }
 
-    System.out.println("It's time to make your first appointment!\nLoading available appointments...");
+    Integer numAppts;
     try {
-      citizen.viewAppointmentsAtClinic();
+      CallableStatement getNumAppts = conn.prepareCall("{? = CALL num_citizen_appts(?)}");
+      getNumAppts.registerOutParameter(1, Types.INTEGER);
+      getNumAppts.setString(2, this.citizen.getSSN());
+      getNumAppts.execute();
+      numAppts = getNumAppts.getInt(1);
+      if (numAppts == 0) {
+        System.out.println("It's time to make your first appointment!");
+      } else if (numAppts == 1) {
+        System.out.println("It's time to make your second appointment!");
+      } else {
+        System.out
+            .println("You have already completed your vaccination! No further action is needed.");
+        exit(0);
+      }
+    } catch (SQLException e) {
+      System.out.println("ERROR: Could not check this user's appointments.");
+    }
+
+    boolean apptsAvailable = false;
+    System.out.println("Loading available appointments...");
+    try {
+      apptsAvailable = citizen.viewAppointmentsAtClinic();
     } catch (SQLException e) {
       System.out.println("ERROR: Could not load appointments at this clinic.");
+    }
+
+    if (apptsAvailable) {
+      System.out.println(
+          "Please select from the above available appointments.\nInput your desired appt_id:");
+      Integer selectedAppt;
+      apptLoop:
+      while (true) {
+        try {
+          selectedAppt = Integer.parseInt(scan.next());
+        } catch (NumberFormatException e) {
+          System.out.println("You have entered an invalid appointment id. Please try again.");
+          continue;
+        }
+        try {
+          String checkApptAvailable = "{? = CALL check_appt_available(?)}";
+          CallableStatement checkApptAvailableStmt = conn.prepareCall(checkApptAvailable);
+          checkApptAvailableStmt.registerOutParameter(1, Types.BOOLEAN);
+          checkApptAvailableStmt.setInt(2, selectedAppt);
+          checkApptAvailableStmt.execute();
+          if (checkApptAvailableStmt.getBoolean(1)) {
+            this.citizen.makeAppointment(selectedAppt);
+            break apptLoop;
+          } else {
+            System.out.println(
+                "The appointment you have selected is currently unavailable. Please select another appointment.");
+          }
+        } catch (SQLException e) {
+          System.out.println("ERROR: Could not schedule an appointment.");
+        }
+
+
+      }
     }
   }
 
@@ -240,7 +295,8 @@ public class ControllerCitizen implements IController {
         }
         break;
       } catch (IllegalArgumentException e) {
-        System.out.println("You have not entered a valid input. Please select a valid clinic option:");
+        System.out
+            .println("You have not entered a valid input. Please select a valid clinic option:");
       }
     }
     this.citizen.assignClinic(value);

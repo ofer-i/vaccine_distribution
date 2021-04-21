@@ -83,5 +83,31 @@ public abstract class  AUser implements IUser {
     }
   }
 
+  public String lookUpClinic(int clinicNo) {
+    try {
+      String query = "{? = CALL get_clinic_name_by_no(?)}";
+      CallableStatement getStmt = connect.prepareCall(query);
+      getStmt.registerOutParameter(1, Types.VARCHAR);
+      getStmt.setInt(2, clinicNo);
+      getStmt.execute();
+      return getStmt.getString(1);
+    } catch (SQLException e) {
+      System.out.println("ERROR: Could not schedule appointment.");
+    }
+    return null;
+  }
 
+  public String lookUpApptDateTime(int apptId) {
+    try {
+      String query = "{? = CALL get_appt_date_time(?)}";
+      CallableStatement getStmt = connect.prepareCall(query);
+      getStmt.registerOutParameter(1, Types.VARCHAR);
+      getStmt.setInt(2, apptId);
+      getStmt.execute();
+      return getStmt.getString(1);
+    } catch (SQLException e) {
+      System.out.println("ERROR: Could not schedule appointment.");
+    }
+    return null;
+  }
 }

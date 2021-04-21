@@ -30,6 +30,10 @@ public final class Citizen extends AUser {
     return output;
   }
 
+  public String getSSN() {
+    return this.ssn;
+  }
+
   public void assignClinic(int clinic_no) {
     this.clinic = clinic_no;
     try {
@@ -57,7 +61,7 @@ public final class Citizen extends AUser {
     return this.clinic;
   }
 
-  public void viewAppointmentsAtClinic() throws SQLException {
+  public boolean viewAppointmentsAtClinic() throws SQLException {
     String query = "{CALL view_available_appointment(?)}";
     CallableStatement createStmt = connect.prepareCall(query);
     createStmt.setInt(1, this.clinic);
@@ -66,20 +70,22 @@ public final class Citizen extends AUser {
     while (hasResults) {
       ResultSet resultSet = createStmt.getResultSet();
       if (!resultSet.next()) {
-        System.out.println("There are currently no available appointments at your clinic. Please try again later.");
-        return;
+        System.out.println(
+            "There are currently no available appointments at your clinic. Please try again later.");
+        return false;
       }
       System.out
           .println("Your appointment options are:");
-      System.out.println("| appt_id | appt_length | date_and_time | staff_name |\n" +
+      System.out.println("| appt_id | appt_length | date_and_time | staff_no | staff_name |\n" +
           "*********************************************************************");
-      int apptNo = resultSet.getInt(1);
+      int apptNo = resultSet.getInt("appointment_id");
       apptsToChooseFrom.add(apptNo);
-      int apptLength = resultSet.getInt(2);
-      Date date = resultSet.getDate(3);
-      String staffName = resultSet.getString(7);
+      int apptLength = resultSet.getInt("length_in_min");
+      Date date = resultSet.getDate("date_and_time");
+      int staffNo = resultSet.getInt("staff_no");
+      String staffName = resultSet.getString("staff_name");
       System.out.println("| " + apptNo + " | " + apptLength + " | "
-          + date + " | " + staffName + " |");
+          + date + " | " + staffNo + " | " + staffName + " |");
       while (resultSet.next()) {
         apptNo = resultSet.getInt(1);
         apptsToChooseFrom.add(apptNo);
@@ -87,10 +93,11 @@ public final class Citizen extends AUser {
         date = resultSet.getDate(3);
         staffName = resultSet.getString(7);
         System.out.println("| " + apptNo + " | " + apptLength + " | "
-            + date + " | " + staffName + " |");
+            + date + " | " + staffNo + " | " + staffName + " |");
       }
       hasResults = createStmt.getMoreResults();
     }
+    return true;
   }
 
   public void viewMyAppointments() throws SQLException {
@@ -112,6 +119,17 @@ public final class Citizen extends AUser {
   }
 
   public void makeAppointment(int apptID) {
-
+    try {
+      String query = "{CALL assign_citizen_to_appt(?, ?)}";
+      CallableStatement getStmt = connect.prepareCall(query);
+      getStmt.setString(1, this.ssn);
+      getStmt.setInt(2, apptID);
+      getStmt.execute();
+      System.out.println(String
+          .format("You have successfully scheduled an appointment at %s for %s.",
+              this.lookUpClinic(this.clinic), this.lookUpApptDateTime(apptID)));
+    } catch (SQLException e) {
+      System.out.println("ERROR: Could not schedule appointment.");
+    }
   }
 }
