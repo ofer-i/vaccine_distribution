@@ -1,6 +1,12 @@
+import java.sql.Connection;
+
 public class GovOfficial extends AUser{
 
-public void viewVaccineSupply(){
+  GovOfficial(Connection conn) {
+    super(conn);
+  }
+
+  public void viewVaccineSupply(){
 
 }
 

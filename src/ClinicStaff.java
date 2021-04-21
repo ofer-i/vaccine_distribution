@@ -1,4 +1,10 @@
+import java.sql.Connection;
+
 public class ClinicStaff extends AUser {
+
+  ClinicStaff(Connection conn) {
+    super(conn);
+  }
 
   public void getClinicInformation(){
 

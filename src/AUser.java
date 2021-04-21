@@ -7,11 +7,11 @@ import java.sql.Types;
 
 public abstract class  AUser implements IUser {
   protected Connection connect;
-   private boolean loggedIn;
+  private boolean loggedIn;
 
-  AUser(){
+  AUser(Connection conn) {
+    this.connect = conn;
     loggedIn = false;
-    this.connect();
   }
 
   //creates an account
@@ -52,30 +52,6 @@ public abstract class  AUser implements IUser {
 
     correctStmt.execute();
     Boolean output = correctStmt.getBoolean(1);
-    return output;
-  }
-
-
-  //Connects the program tothe vaccine distribution database
-
-  @Override
-  public void connect() {
-    try{
-
-      connect = DriverManager.getConnection (
-          "jdbc:mysql://"
-              + "127.0.0.1:3306" + "/" + "vaccine_distribution" + "?allowPublicKeyRetrieval=true&character"
-              + "Encoding=UTF-8&useSSL=false","root","R0senman24667#");
-    }catch(Exception e){ System.out.println(e);}
-  }
-
-  @Override
-  public boolean userExists(String username) throws SQLException {
-    CallableStatement existStmt = connect.prepareCall("{? = CALL userExists(?)}");
-    existStmt.registerOutParameter(1, Types.BOOLEAN);
-    existStmt.setString(2, username);
-    existStmt.execute();
-    Boolean output = existStmt.getBoolean(1);
     return output;
   }
 

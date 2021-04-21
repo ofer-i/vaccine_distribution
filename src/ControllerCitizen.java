@@ -1,15 +1,20 @@
+import static java.lang.System.exit;
+
 import java.sql.CallableStatement;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Scanner;
 
 public class ControllerCitizen implements IController {
 
+  private Citizen citizen;
   ControllerCitizen() {
 
   }
@@ -71,6 +76,20 @@ public class ControllerCitizen implements IController {
       }
     }
 
+    Integer zipCode = null;
+    System.out.println("Please provide your zip code:");
+    while (true) {
+      String zip = scan.next();
+      try {
+        zipCode = Integer.parseInt(String.valueOf(zip));
+      } catch (NumberFormatException e) {
+        System.out.println(
+            "Invalid zip code. SSN must be a 5-digit number.\nPlease re-enter your zip code:");
+        break;
+      }
+      break;
+    }
+
     String healthHistory = "";
     System.out.println("Do you have any relevant health history you'd like to add?");
 
@@ -105,14 +124,11 @@ public class ControllerCitizen implements IController {
     try {
       Statement statement = conn.createStatement();
       String stringToExecute = String.format(
-            "INSERT INTO citizen (user_id, ssn, citizen_name, dob, gender, health_history)"
-              + "VALUES ('%s', '%s', '%s', '%s', '%s', '%s')", username, ssn, fullName, dob, gender,
-          healthHistory);
+          "INSERT INTO citizen (user_id, ssn, citizen_name, dob, gender, health_history, zip_code)"
+              + "VALUES ('%s', '%s', '%s', '%s', '%s', '%s', %d)", username, ssn, fullName, dob,
+          gender,
+          healthHistory, zipCode);
       statement.executeUpdate(stringToExecute);
-      //statement.executeUpdate(String.format(
-        //  "INSERT INTO citizen (user_id, ssn, citizen_name, dob, gender, health_history)"
-          //    + "VALUES (%s, %s, %s, %s, %s, %s)", username, ssn, fullName, dob, gender,
-          //healthHistory));
     } catch (SQLException e) {
       System.out.println("ERROR: Could not add citizen info to database.");
     }
@@ -134,33 +150,100 @@ public class ControllerCitizen implements IController {
       System.out.println("ERROR: Could not add citizen info to database.");
     }
 
-/*
-    while (true) {
-      System.out.println("press 1 for viewing all available appointment at a clinic");
-      System.out.println("press 2 for viewing my appointment");
-      System.out.println("press 3 to log out");
-
-      int choice = scan.nextInt();
-
-      if (choice == 1) {
-        citizen.viewAppointmentsAtClinic();
-      }
-
-      if (choice == 2) {
-        citizen.viewMyAppointments();
-      }
-      if (choice == 3) {
-        int session = citizen.getCurrentSession(username);
-        citizen.logOut(session);
-        System.out.println("Successfully logged Out!");
-        break;
-      } else {
-        System.out.println("Invalid choice!");
-      }
-
-
+    try {
+      CallableStatement citizenSSN = conn.prepareCall("{? = CALL get_ssn_by_user(?)}");
+      citizenSSN.registerOutParameter(1, Types.VARCHAR);
+      citizenSSN.setString(2, username);
+      citizenSSN.execute();
+      CallableStatement citizenZip = conn.prepareCall("{? = CALL get_zip_code_by_user(?)}");
+      citizenZip.registerOutParameter(1, Types.VARCHAR);
+      citizenZip.setString(2, username);
+      citizenZip.execute();
+      citizen = new Citizen(citizenSSN.getString(1), citizenZip.getInt(1), conn);
+    } catch (SQLException e) {
+      System.out.println("ERROR: Could not create a citizen object for this user.");
     }
-*/
+
+    try {
+      CallableStatement citizenClinic = conn.prepareCall("{? = CALL get_clinic_by_user(?)}");
+      citizenClinic.registerOutParameter(1, Types.VARCHAR);
+      citizenClinic.setString(2, username);
+      citizenClinic.execute();
+      if (citizenClinic.getInt(1) == 0) {
+        this.findAClinic(conn, scan);
+      } else {
+        this.citizen.assignClinicLocal(citizenClinic.getInt(1));
+      }
+    } catch (SQLException e) {
+      System.out.println("ERROR: Could not retrieve this user's clinic.");
+    }
+
+    System.out.println("It's time to make your first appointment!\nLoading available appointments...");
+    try {
+      citizen.viewAppointmentsAtClinic();
+    } catch (SQLException e) {
+      System.out.println("ERROR: Could not load appointments at this clinic.");
+    }
+  }
+
+  private void findAClinic(Connection conn, Scanner scan) {
+    ArrayList<Integer> clinicsToChooseFrom = new ArrayList<>();
+
+    System.out.println("Loading your clinic options...");
+    try {
+      CallableStatement clinicOptions = conn.prepareCall("{CALL find_clinic_by_zip_code(?)}");
+      clinicOptions.setInt(1, citizen.zipCode);
+      boolean hasResults = clinicOptions.execute();
+
+      while (hasResults) {
+        ResultSet resultSet = clinicOptions.getResultSet();
+
+        if (!resultSet.next()) {
+          System.out.println("There are currently no available clinics. Please try again later.");
+          exit(1);
+        }
+        System.out
+            .println("Your clinic options are:");
+        System.out.println("| clinic_no | clinic_name | street | city | zip_code |\n" +
+            "*********************************************************************");
+        int clinicNo = resultSet.getInt("clinic_no");
+        clinicsToChooseFrom.add(clinicNo);
+        String clinic_name = resultSet.getString("clinic_name");
+        String street = resultSet.getString("street");
+        String city = resultSet.getString("city");
+        int zipCode = resultSet.getInt("zip_code");
+        System.out.println("| " + clinicNo + " | " + clinic_name + " | "
+            + street + " | " + city + " | " + zipCode + " |");
+        while (resultSet.next()) {
+          clinicNo = resultSet.getInt("clinic_no");
+          clinicsToChooseFrom.add(clinicNo);
+          clinic_name = resultSet.getString("clinic_name");
+          street = resultSet.getString("street");
+          city = resultSet.getString("city");
+          zipCode = resultSet.getInt("zip_code");
+          System.out.println("| " + clinicNo + " | " + clinic_name + " | "
+              + street + " | " + city + " | " + zipCode + " |");
+        }
+        hasResults = clinicOptions.getMoreResults();
+      }
+    } catch (SQLException e) {
+      System.out.println("ERROR: Could not fetch clinic options for this user.");
+    }
+
+    System.out.println("\nPlease select your desired clinic_no (column 1):");
+    int value;
+    while (true) {
+      try {
+        value = Integer.parseInt(scan.next());
+        if (!clinicsToChooseFrom.contains(value)) {
+          throw new IllegalArgumentException();
+        }
+        break;
+      } catch (IllegalArgumentException e) {
+        System.out.println("You have not entered a valid input. Please select a valid clinic option:");
+      }
+    }
+    this.citizen.assignClinic(value);
 
   }
 }

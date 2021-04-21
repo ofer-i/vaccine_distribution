@@ -6,10 +6,6 @@ public interface IUser {
 
   public void startSession(String username) throws SQLException;
 
-  public void connect();
-
-  public boolean userExists(String username) throws SQLException;
-
   public void logOut(int session) throws SQLException;
 
   public boolean correctLogInInformation(String username,String password) throws SQLException;
