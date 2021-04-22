@@ -5,6 +5,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Scanner;
 
 public class ControllerClinic implements IController {
@@ -147,6 +148,9 @@ public class ControllerClinic implements IController {
       System.out.println("Option menu:");
       System.out.println("> Enter 1 to view all clinic information");
       System.out.println("> Enter 2 to add new available appointment");
+      System.out.println("> Enter 3 to delete a patient from the system");
+      System.out.println("> Enter 4 to view your upcoming appointments");
+      System.out.println("> Enter 5 to log out");
 
       int choice = scan.nextInt();
       switch (choice) {
@@ -158,23 +162,63 @@ public class ControllerClinic implements IController {
           }
           break;
         case 2:
-          String dateTimeFormat = "yyyy-MM-dd HH:mm:00";
+          String dateTimeFormat = "yyyy-MM-dd HH:mm";
           String apptDateTime;
+          scan.nextLine();
           while (true) {
             System.out.println("Please provide the appointment date and time (yyyy-MM-dd HH:mm):");
-            apptDateTime = scan.next();
+            apptDateTime = scan.nextLine();
             try {
-              new SimpleDateFormat(dateTimeFormat).parse(apptDateTime);
+              Date date = new SimpleDateFormat(dateTimeFormat).parse(apptDateTime);
+              if (date.before(new Date())) {
+                throw new IllegalArgumentException("You have provided an invalid appointment time. Please enter an appointment time in the future.");
+              }
               break;
-            } catch (ParseException e) {
+            } catch (Exception e) {
               System.out.println("You have provided an invalid appointment time. Please try again.");
             }
           }
 
           int empId = this.clinicStaff.getEmployeeId();
 
-          this.clinicStaff.addAppointmentAvailability(apptDateTime, empId);
-
+          this.clinicStaff.addAppointmentAvailability(apptDateTime + ":00", empId);
+          break;
+        case 3:
+          System.out.println("Please provide the social security number (XXXXXXXXXX) of the patient you'd like to delete.");
+          String ssn;
+          while (true) {
+            ssn = scan.next();
+            for (int i = 0; i < ssn.length(); i++) {
+              try {
+                Integer.parseInt(String.valueOf(ssn.charAt(i)));
+              } catch (NumberFormatException e) {
+                System.out.println(
+                    "Invalid social security number. SSN must be a 10-digit number (XXXXXXXXXX).\nPlease re-enter the patient's social security number:");
+                continue;
+              }
+            }
+            break;
+          }
+          this.clinicStaff.deletePatient(ssn);
+          break;
+        case 4:
+          try {
+            this.clinicStaff.getUpcomingAppointments();
+          } catch (SQLException e) {
+            System.out.println("ERROR: Could not retrieve upcoming appointments.");
+          }
+          break;
+        case 5:
+          try {
+            clinicStaff.logOut(clinic.getCurrentSession(username));
+            System.out.println("Successfully logged out!");
+            System.exit(0);
+          } catch (Exception e) {
+            System.out.println("ERROR: Failed to log out!");
+          }
+          break;
+        default:
+          System.out.println("Invalid choice! Please try again.");
       }
     }
 

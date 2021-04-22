@@ -42,13 +42,21 @@ public final class Citizen extends AUser {
       getStmt.setString(1, this.ssn);
       getStmt.setInt(2, clinic_no);
       getStmt.execute();
+      this.getClinicName();
+    } catch (SQLException e) {
+      System.out.println("ERROR: Could not update patient clinic.");
+    }
+  }
+
+  public void getClinicName() {
+    try {
       CallableStatement clinicName = connect.prepareCall("{? = CALL get_clinic_name_by_no(?)}");
       clinicName.registerOutParameter(1, Types.VARCHAR);
-      clinicName.setInt(2, clinic_no);
+      clinicName.setInt(2, this.clinic);
       clinicName.execute();
       System.out.println("Your assigned clinic is now " + clinicName.getString(1) + ".");
     } catch (SQLException e) {
-      System.out.println("ERROR: Could not update patient clinic.");
+      System.out.println("ERROR: Could not retrieve clinic name.");
     }
   }
 

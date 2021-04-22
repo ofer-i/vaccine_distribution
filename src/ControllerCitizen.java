@@ -30,8 +30,8 @@ public class ControllerCitizen implements IController {
           Integer.parseInt(String.valueOf(ssn.charAt(i)));
         } catch (NumberFormatException e) {
           System.out.println(
-              "Invalid social security number. SSN must be a 10-digit number.\nPlease re-enter your social security number:");
-          break;
+              "Invalid social security number. SSN must be a 10-digit number (XXXXXXXXXX).\nPlease re-enter your social security number:");
+          continue;
         }
       }
       break;
@@ -137,7 +137,6 @@ public class ControllerCitizen implements IController {
 
   @Override
   public void run(Scanner scan, Connection conn, String username) {
-
     try {
       CallableStatement citizenWithUserExists = conn
           .prepareCall("{? = CALL check_citizen_user_exists(?)}");
@@ -165,18 +164,25 @@ public class ControllerCitizen implements IController {
       System.out.println("ERROR: Could not create a citizen object for this user.");
     }
 
-    try {
-      CallableStatement citizenClinic = conn.prepareCall("{? = CALL get_clinic_by_user(?)}");
-      citizenClinic.registerOutParameter(1, Types.VARCHAR);
-      citizenClinic.setString(2, username);
-      citizenClinic.execute();
-      if (citizenClinic.getInt(1) == 0) {
-        this.findAClinic(conn, scan);
-      } else {
-        this.citizen.assignClinicLocal(citizenClinic.getInt(1));
+    selectClinic(conn, username, scan);
+
+    selectClinicLoop:
+    while (true) {
+      System.out.println("Would you like to select a different clinic or continue?");
+      System.out.println("Select (1) to select another clinic or (2) to continue");
+      int selection = scan.nextInt();
+      switch (selection) {
+        case 1:
+          System.out.println("You have indicated that you'd like to choose another appointment.");
+          this.findAClinic(conn, scan);
+          break;
+        case 2:
+          System.out.println("You have indicated that you'd like to continue. Let's move on to scheduling your appointment.");
+          break selectClinicLoop;
+        default:
+          System.out.println("You have selected an invalid option. Please try again.");
+          break;
       }
-    } catch (SQLException e) {
-      System.out.println("ERROR: Could not retrieve this user's clinic.");
     }
 
     Integer numAppts;
@@ -238,6 +244,25 @@ public class ControllerCitizen implements IController {
 
 
       }
+    }
+
+    System.out.println("Thank you for using our vaccine distribution system. Goodbye!");
+  }
+
+  private void selectClinic(Connection conn, String username, Scanner scan) {
+    try {
+      CallableStatement citizenClinic = conn.prepareCall("{? = CALL get_clinic_by_user(?)}");
+      citizenClinic.registerOutParameter(1, Types.VARCHAR);
+      citizenClinic.setString(2, username);
+      citizenClinic.execute();
+      if (citizenClinic.getInt(1) == 0) {
+        this.findAClinic(conn, scan);
+      } else {
+        this.citizen.assignClinicLocal(citizenClinic.getInt(1));
+        this.citizen.getClinicName();
+      }
+    } catch (SQLException e) {
+      System.out.println("ERROR: Could not retrieve this user's clinic.");
     }
   }
 

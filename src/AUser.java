@@ -14,6 +14,7 @@ public abstract class  AUser implements IUser {
     this.username = username;
     this.connect = conn;
     loggedIn = false;
+    this.startSession(username);
   }
 
   //creates an account
@@ -29,17 +30,21 @@ public abstract class  AUser implements IUser {
 
   //starting the user session
   @Override
-  public void startSession(String username) throws SQLException {
-    if(!this.loggedIn) {
-      CallableStatement addStmt = connect.prepareCall("{CALL add_user_session(?, ?)}");
-      addStmt.setString(1, username);
-      Date d1 = new Date(System.currentTimeMillis());
-      addStmt.setDate(2, d1);
+  public void startSession(String username) {
+    try {
+      if (!this.loggedIn) {
+        CallableStatement addStmt = connect.prepareCall("{CALL add_user_session(?, ?)}");
+        addStmt.setString(1, username);
+        Date d1 = new Date(System.currentTimeMillis());
+        addStmt.setDate(2, d1);
 
-      addStmt.execute();
-      this.loggedIn = true;
-    } else{
-      throw new IllegalStateException("user already is in session");
+        addStmt.execute();
+        this.loggedIn = true;
+      } else {
+        throw new IllegalStateException("user already is in session");
+      }
+    } catch (SQLException e) {
+      System.out.println("ERROR: Could not start user session.");
     }
   }
 
@@ -62,11 +67,12 @@ public abstract class  AUser implements IUser {
     String query = "{CALL update_user_session(?, ?)}";
     CallableStatement endStmt = connect.prepareCall(query);
     endStmt.setInt(1, session);
-    Date d1 =new Date(System.currentTimeMillis());
+    Date d1 = new Date(System.currentTimeMillis());
     endStmt.setDate(2, d1);
     endStmt.execute();
     loggedIn = false;
     connect.close();
+    System.out.println("You have successfully logged out!");
     System.exit(0);
   }
 
